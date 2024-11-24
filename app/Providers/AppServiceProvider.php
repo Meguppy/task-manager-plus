@@ -4,7 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
-use Carbon\Carbon;
+use Illuminate\Support\Carbon;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -25,5 +25,6 @@ class AppServiceProvider extends ServiceProvider
         Paginator::useBootstrapFive();
         // Carbonのロケールを日本語に設定
         Carbon::setLocale(config('app.locale'));
+        setlocale(LC_ALL,'ja_JP.UTF-8');
     }
 }

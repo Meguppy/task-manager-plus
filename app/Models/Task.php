@@ -8,6 +8,18 @@ use Illuminate\Database\Eloquent\Model;
 class Task extends Model
 {
     protected $fillable = ['name', 'user_id', 'deadline_at'];
+    protected function casts(): array{
+        return [
+            'deadline_at' => 'date:M/D(ddd)'
+        ];
+    }
+
+    // deadline_atのアクセサを定義
+    public function getDeadlineAtFormattedAttribute()
+    {
+        return $this->deadline_at->isoFormat('M/D(ddd)');
+    }
+
 
     // 未完了タスクを取得するスコープ
     public function scopeAllTasks($query)

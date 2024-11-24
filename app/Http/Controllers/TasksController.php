@@ -7,51 +7,42 @@ use App\Models\Task;
 use App\Models\User;
 // 日付
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Config;
 
 class TasksController extends Controller
 {
     // マイタスク画面表示
     public function myTasks(Request $request)
     {
-        // 1ページの表示数
-        $n = 10;
         // 絞り込みプルダウンの値取得
         $filter = $request->input('filter', 'all');
+
         // ログイン中のユーザー
         $user_id = 1; // 一旦固定値
 
         // 未完了タスク取得
-        $tasks = $this->getNotDoneTasks($filter,$n,$user_id);
+        $tasks = $this->getNotDoneTasks($filter, $user_id);
 
         // 完了済みタスク取得
-        $doneTasks = $this->getDoneTasks('all',$n,$user_id);
+        $doneTasks = $this->getDoneTasks('all', $user_id);
 
-        // 日付フォーマット変更
-        $this->getFormattedTasks($tasks);
-        $this->getFormattedTasks($doneTasks);
-
-        return view('tasks.my',  ['tasks' => $tasks, 'doneTasks' => $doneTasks, 'filter' => $filter]);
+        return view('tasks.my',  ['tasks' => $tasks, 'doneTasks' => $doneTasks, 'filter' => $filter, 'filters' => Config::get('const.filter')]);
     }
 
     // オールタスク画面表示
     public function index(Request $request)
     {
-        // 1ページの表示数
-        $n = 10;
         // 絞り込みプルダウンの値取得
         $filter = $request->input('filter', 'all');
 
         // 未完了タスク取得
-        $tasks = $this->getNotDoneTasks($filter,$n);
+        $tasks = $this->getNotDoneTasks($filter);
+        // dd($tasks);
 
         // 完了済みタスク取得
-        $doneTasks = $this->getDoneTasks('all',$n);
+        $doneTasks = $this->getDoneTasks('all');
 
-        // 日付フォーマット変更
-        $this->getFormattedTasks($tasks);
-        $this->getFormattedTasks($doneTasks);
-
-        return view('tasks.index',  ['tasks' => $tasks, 'doneTasks' => $doneTasks, 'filter' => $filter]);
+        return view('tasks.index',  ['tasks' => $tasks, 'doneTasks' => $doneTasks, 'filter' => $filter, 'filters' => Config::get('const.filter')]);
     }
 
     // タスク登録画面表示
@@ -66,7 +57,7 @@ class TasksController extends Controller
     {
         // バリデーションチェック
         $validation = $this->getValidationRules();
-        $request->validate($validation['rules'],$validation['params']);
+        $request->validate($validation['rules'], $validation['params']);
 
         // POST送信データを受け取る
         $name = $request->input('name');
@@ -86,32 +77,32 @@ class TasksController extends Controller
     }
 
     // タスク編集画面表示
-    public function edit($id)
+    public function edit($taskId)
     {
-        // $id が null または空でないことを確認
-        if (!$id) {
+        // $taskId が null または空でないことを確認
+        if (!$taskId) {
             return redirect()->route('tasks.index');
         }
 
         // Tasks テーブルに id が存在するかを確認
-        $task = Task::find($id);
+        $task = Task::find($taskId);
 
         // タスクが存在しない場合はリダイレクト
         if (!$task) {
             return redirect()->route('tasks.index');
         }
 
-        $task = Task::where('id', $id)->first();
+        $task = Task::where('id', $taskId)->first();
         $users = User::select()->get();
         return view('tasks.edit',  ['task' => $task, 'users' => $users]);
     }
 
     // タスク更新処理
-    public function update(Request $request, $id)
+    public function update(Request $request, $taskId)
     {
         // バリデーションチェック
         $validation = $this->getValidationRules();
-        $request->validate($validation['rules'],$validation['params']);
+        $request->validate($validation['rules'], $validation['params']);
 
         // PUT送信データを受け取る
         $name = $request->input('name');
@@ -119,7 +110,7 @@ class TasksController extends Controller
         $user_id = $request->input('user_id');
 
         // DB更新
-        Task::where('id', $id)->update([
+        Task::where('id', $taskId)->update([
             'name' => $name,
             'deadline_at' => $deadline_at,
             'user_id' => $user_id,
@@ -129,10 +120,10 @@ class TasksController extends Controller
     }
 
     // タスク削除処理
-    public function destroy(Request $request, $id)
+    public function destroy($taskId)
     {
         // 該当IDのタスクを取得
-        $task = Task::find($id);
+        $task = Task::find($taskId);
 
         // 該当タスクが存在しない場合のエラーハンドリング
         if (!$task) {
@@ -165,94 +156,66 @@ class TasksController extends Controller
     }
 
     // タスク未完了処理
-    public function unDone(Request $request)
+    public function unDone($taskId)
     {
-        // チェックしたタスクのID
-        $taskIds = $request->input('done', []);
 
-        // エラー：タスク0個で完了ボタン
-        if (empty($taskIds)) {
-            return redirect()->route('tasks.index')->with('error', 'タスクが選択されていません');
+        // 該当IDのタスクを取得
+        $task = Task::find($taskId);
+
+        // 該当タスクが存在しない場合のエラーハンドリング
+        if (!$task) {
+            return redirect()->route('tasks.index')->with('flash_message', 'タスクが見つかりませんでした。');
         }
 
-        // チェックしたIDのデータ更新
-        if (!empty($taskIds)) {
-            // 選択されたタスクのdone_atを空に更新
-            Task::whereIn('id', $taskIds)->update(['done_at' => '']);
-        }
+        Task::where('id', $taskId)->update(['done_at' => null]);
+
         return redirect()->route('tasks.index')->with('flash_message', 'タスクを未完了に戻しました。');
     }
 
 
     // 未完了タスク取得
-    private function getNotDoneTasks($filter, $n, $user_id="")
+    private function getNotDoneTasks($filter, $user_id = "")
     {
-        return $this->getTasks('notDone', $filter, $n, $user_id);
+        return $this->getTasks('notDone', $filter,  $user_id);
     }
 
     // 完了済みタスク取得
-    private function getDoneTasks($filter, $n, $user_id="")
+    private function getDoneTasks($filter, $user_id = "")
     {
-        return $this->getTasks('done', $filter, $n, $user_id);
+        return $this->getTasks('done', $filter, $user_id);
     }
 
     // タスク取得
-    private function getTasks($status, $filter, $n, $user_id="")
+    private function getTasks($status, $filter, $user_id = "")
     {
 
         // 完了または未完了タスク取得
         $tasks = Task::allTasks()->$status(); // done または notDone
 
-        // 絞り込みプルダウン
-        switch ($filter) {
-            // 期限切れ
-            case 'over_deadline':
-                $tasks->overDeadline();
-            break;
-            // 期限なし
-            case 'no_deadline':
-                $tasks->noDeadline();
-            break;
-            // 担当なし
-            case 'no_user':
-                $tasks->noUser();
-            break;
-            // すべて
-            case 'all':
-            default:
+        // プルダウン絞り込み
+        $filters = Config::get('const.filter');
+        if (isset($filters[$filter]['method']) && $filters[$filter]['method']) {
+            $method = $filters[$filter]['method'];
+            $tasks->$method();
         }
 
         // ユーザー絞り込み
-        if(!empty($user_id)){
-            $tasks->my($user_id);
-        }
+        $tasks->when($user_id, function ($q, $user_id) {
+            $q->my($user_id);
+        });
 
-        return $tasks->paginate($n);
-
-    }
-
-    // 日付フォーマット変更
-    private function getFormattedTasks($tasks){
-        // 日本語のロケールに設定
-        Carbon::setLocale('ja');
-
-        // 日付フォーマット変更
-        foreach ($tasks as $task) {
-            if (!empty($task->deadline_at)) {
-                $task->deadline_at = Carbon::parse($task->deadline_at)->translatedFormat('n/j(D)');
-            }
-        }
+        return $tasks->paginate(config('const.paginate.display_count'));
     }
 
     // バリデーションルール
     private function getValidationRules()
     {
         $validation = [
-            'rules'=>[
+            'rules' => [
                 'name' => 'required|max:15',
                 'user_id' => 'nullable|exists:users,id',
             ],
-            'params'=>[
+            'params' => [
                 'name.required' => 'タスク名は必須です。',
                 'name.max' => 'タスク名は15文字以内です。',
                 'user_id.exists' => '選択された担当者が無効です。',
@@ -261,7 +224,4 @@ class TasksController extends Controller
 
         return $validation;
     }
-
-
 }
-

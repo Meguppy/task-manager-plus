@@ -19,7 +19,7 @@
 
             <div class="mb-3 col-12">
                 <label for="deadline_at" class="form-label">期限</label>
-                <input type="date" class="form-control" name="deadline_at" id="deadline_at" value="{{$task->deadline_at}}">
+                <input type="date" class="form-control" name="deadline_at" id="deadline_at" value="@if($task->deadline_at){{$task->deadline_at->toDateString()}}@endif">
             </div>
 
             <div class="mb-3 col-12">
