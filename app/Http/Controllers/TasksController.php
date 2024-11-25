@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Http\Requests\StoreTaskRequest;
 use App\Models\Task;
 use App\Models\User;
-// 日付
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Config;
 
@@ -37,7 +37,6 @@ class TasksController extends Controller
 
         // 未完了タスク取得
         $tasks = $this->getNotDoneTasks($filter);
-        // dd($tasks);
 
         // 完了済みタスク取得
         $doneTasks = $this->getDoneTasks('all');
@@ -53,11 +52,8 @@ class TasksController extends Controller
     }
 
     // タスク登録処理
-    public function store(Request $request)
+    public function store(StoreTaskRequest $request)
     {
-        // バリデーションチェック
-        $validation = $this->getValidationRules();
-        $request->validate($validation['rules'], $validation['params']);
 
         // POST送信データを受け取る
         $name = $request->input('name');
@@ -98,11 +94,8 @@ class TasksController extends Controller
     }
 
     // タスク更新処理
-    public function update(Request $request, $taskId)
+    public function update(StoreTaskRequest $request, $taskId)
     {
-        // バリデーションチェック
-        $validation = $this->getValidationRules();
-        $request->validate($validation['rules'], $validation['params']);
 
         // PUT送信データを受け取る
         $name = $request->input('name');
@@ -125,7 +118,7 @@ class TasksController extends Controller
         // 該当IDのタスクを取得
         $task = Task::find($taskId);
 
-        // 該当タスクが存在しない場合のエラーハンドリング
+        // 該当タスクが存在しない
         if (!$task) {
             return redirect()->route('tasks.index')->with('flash_message', 'タスクが見つかりませんでした。');
         }
@@ -162,7 +155,7 @@ class TasksController extends Controller
         // 該当IDのタスクを取得
         $task = Task::find($taskId);
 
-        // 該当タスクが存在しない場合のエラーハンドリング
+        // 該当タスクが存在しない
         if (!$task) {
             return redirect()->route('tasks.index')->with('flash_message', 'タスクが見つかりませんでした。');
         }
@@ -207,21 +200,4 @@ class TasksController extends Controller
         return $tasks->paginate(config('const.paginate.display_count'));
     }
 
-    // バリデーションルール
-    private function getValidationRules()
-    {
-        $validation = [
-            'rules' => [
-                'name' => 'required|max:15',
-                'user_id' => 'nullable|exists:users,id',
-            ],
-            'params' => [
-                'name.required' => 'タスク名は必須です。',
-                'name.max' => 'タスク名は15文字以内です。',
-                'user_id.exists' => '選択された担当者が無効です。',
-            ],
-        ];
-
-        return $validation;
-    }
 }
