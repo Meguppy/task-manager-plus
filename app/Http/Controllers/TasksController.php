@@ -9,6 +9,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Config;
 
+
 class TasksController extends Controller
 {
     // マイタスク画面表示
@@ -22,6 +23,12 @@ class TasksController extends Controller
 
         // 未完了タスク取得
         $tasks = $this->getNotDoneTasks($filter, $user_id);
+
+        // 期限切れチェック
+        $today = Carbon::today();
+        foreach($tasks as $task){
+            $task->isOverdue = $task->deadline_at ? $task->deadline_at->isBefore($today) : '';
+        }
 
         // 完了済みタスク取得
         $doneTasks = $this->getDoneTasks('all', $user_id);
@@ -37,6 +44,12 @@ class TasksController extends Controller
 
         // 未完了タスク取得
         $tasks = $this->getNotDoneTasks($filter);
+
+        // 期限切れチェック
+        $today = Carbon::today();
+        foreach($tasks as $task){
+            $task->isOverdue = $task->deadline_at ? $task->deadline_at->isBefore($today) : '';
+        }
 
         // 完了済みタスク取得
         $doneTasks = $this->getDoneTasks('all');
@@ -181,7 +194,6 @@ class TasksController extends Controller
     // タスク取得
     private function getTasks($status, $filter, $user_id = "")
     {
-
         // 完了または未完了タスク取得
         $tasks = Task::allTasks()->$status(); // done または notDone
 

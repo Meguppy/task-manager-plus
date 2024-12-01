@@ -50,7 +50,7 @@
                                 <div class="d-flex gap-2">
                                     {{-- 期限 --}}
                                     <div class="">
-                                        <p class="fs-7 text-danger ms-1">
+                                        <p class="fs-7 ms-1 {{$task->isOverdue? 'text-danger' : ''}}">
                                             @if ($task->deadline_at)
                                             {{ $task->deadline_at_formatted }}
                                             @endif
