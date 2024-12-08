@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Http\Requests\StoreTaskRequest;
+use Carbon\Carbon;
 use App\Models\Task;
 use App\Models\User;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\Config;
-
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use App\Http\Requests\StoreTaskRequest;
 
 class TasksController extends Controller
 {
@@ -16,130 +15,84 @@ class TasksController extends Controller
     public function myTasks(Request $request)
     {
         // 絞り込みプルダウンの値取得
-        $filter = $request->input('filter', 'all');
+        $selectedFilter = $request->input('selectedFilter', 'all');
 
         // ログイン中のユーザー
-        $user_id = 1; // 一旦固定値
+        $user_id = Auth::id();
 
         // 未完了タスク取得
-        $tasks = $this->getNotDoneTasks($filter, $user_id);
-
-        // 期限切れチェック
-        $today = Carbon::today();
-        foreach($tasks as $task){
-            $task->isOverdue = $task->deadline_at ? $task->deadline_at->isBefore($today) : '';
-        }
+        $tasks = $this->getNotDoneTasks($selectedFilter, $user_id);
 
         // 完了済みタスク取得
         $doneTasks = $this->getDoneTasks('all', $user_id);
 
-        return view('tasks.my',  ['tasks' => $tasks, 'doneTasks' => $doneTasks, 'filter' => $filter, 'filters' => Config::get('const.filter')]);
+        return view('tasks.my', compact('tasks', 'doneTasks', 'selectedFilter'));
     }
 
     // オールタスク画面表示
     public function index(Request $request)
     {
         // 絞り込みプルダウンの値取得
-        $filter = $request->input('filter', 'all');
+        $selectedFilter = $request->input('selectedFilter', 'all');
 
         // 未完了タスク取得
-        $tasks = $this->getNotDoneTasks($filter);
-
-        // 期限切れチェック
-        $today = Carbon::today();
-        foreach($tasks as $task){
-            $task->isOverdue = $task->deadline_at ? $task->deadline_at->isBefore($today) : '';
-        }
+        $tasks = $this->getNotDoneTasks($selectedFilter);
 
         // 完了済みタスク取得
         $doneTasks = $this->getDoneTasks('all');
 
-        return view('tasks.index',  ['tasks' => $tasks, 'doneTasks' => $doneTasks, 'filter' => $filter, 'filters' => Config::get('const.filter')]);
+        return view('tasks.index', compact('tasks', 'doneTasks', 'selectedFilter'));
     }
 
     // タスク登録画面表示
     public function create()
     {
-        $users = User::select()->get();
-        return view('tasks.create',  ['users' => $users]);
+        $users = User::all();
+        return view('tasks.create', compact('users'));
     }
 
     // タスク登録処理
     public function store(StoreTaskRequest $request)
     {
-
         // POST送信データを受け取る
         $name = $request->input('name');
         $deadline_at = $request->input('deadline_at');
         $user_id = $request->input('user_id');
 
         // DB登録
-        $task = Task::create(
-            [
-                'name' => $name,
-                'deadline_at' => $deadline_at,
-                'user_id' => $user_id,
-            ],
-        );
-
-        return redirect()->route('tasks.index')->with('flash_message', '登録成功しました。');
-    }
-
-    // タスク編集画面表示
-    public function edit($taskId)
-    {
-        // $taskId が null または空でないことを確認
-        if (!$taskId) {
-            return redirect()->route('tasks.index');
-        }
-
-        // Tasks テーブルに id が存在するかを確認
-        $task = Task::find($taskId);
-
-        // タスクが存在しない場合はリダイレクト
-        if (!$task) {
-            return redirect()->route('tasks.index');
-        }
-
-        $task = Task::where('id', $taskId)->first();
-        $users = User::select()->get();
-        return view('tasks.edit',  ['task' => $task, 'users' => $users]);
-    }
-
-    // タスク更新処理
-    public function update(StoreTaskRequest $request, $taskId)
-    {
-
-        // PUT送信データを受け取る
-        $name = $request->input('name');
-        $deadline_at = $request->input('deadline_at');
-        $user_id = $request->input('user_id');
-
-        // DB更新
-        Task::where('id', $taskId)->update([
+        $task = Task::create([
             'name' => $name,
             'deadline_at' => $deadline_at,
             'user_id' => $user_id,
         ]);
 
-        return redirect()->route('tasks.index')->with('flash_message', '更新成功しました。');
+        $flashMessage = '登録成功しました。';
+        return redirect()->route('tasks.index')->with(compact('flashMessage'));
+    }
+
+    // タスク編集画面表示
+    public function edit(Task $task)
+    {
+        $users = User::all();
+        return view('tasks.edit', compact('task','users'));
+    }
+
+    // タスク更新処理
+    public function update(StoreTaskRequest $request, Task $task)
+    {
+        $task->fill($request->all())->save();
+
+        $flashMessage = '更新成功しました。';
+        return redirect()->route('tasks.index')->with(compact('flashMessage'));
     }
 
     // タスク削除処理
-    public function destroy($taskId)
+    public function destroy(Task $task)
     {
-        // 該当IDのタスクを取得
-        $task = Task::find($taskId);
+        Task::destroy($task->id);
 
-        // 該当タスクが存在しない
-        if (!$task) {
-            return redirect()->route('tasks.index')->with('flash_message', 'タスクが見つかりませんでした。');
-        }
-
-        // タスク削除処理
-        $task->delete();
-
-        return redirect()->route('tasks.index')->with('flash_message', 'タスクを削除しました。');
+        $flashMessage = 'タスクを削除しました。';
+        return redirect()->route('tasks.index')->with(compact('flashMessage'));
     }
 
     // タスク完了処理
@@ -153,54 +106,44 @@ class TasksController extends Controller
             return redirect()->route('tasks.index')->with('error', 'タスクが選択されていません。');
         }
 
-        // チェックしたIDのデータ更新
-        if (!empty($taskIds)) {
-            // 選択されたタスクのdone_atに現在の日付を更新
-            Task::whereIn('id', $taskIds)->update(['done_at' => Carbon::now()]);
-        }
-        return redirect()->route('tasks.index')->with('flash_message', 'タスクを完了しました。');
+        // 選択されたタスクのdone_atに現在の日付を更新
+        Task::whereIn('id', $taskIds)->update(['done_at' => Carbon::now()]);
+
+        $flashMessage = 'タスクを完了しました。';
+        return redirect()->route('tasks.index')->with(compact('flashMessage'));
     }
 
     // タスク未完了処理
-    public function unDone($taskId)
+    public function unDone(Task $task)
     {
+        Task::where('id', $task->id)->update(['done_at' => null]);
 
-        // 該当IDのタスクを取得
-        $task = Task::find($taskId);
-
-        // 該当タスクが存在しない
-        if (!$task) {
-            return redirect()->route('tasks.index')->with('flash_message', 'タスクが見つかりませんでした。');
-        }
-
-        Task::where('id', $taskId)->update(['done_at' => null]);
-
-        return redirect()->route('tasks.index')->with('flash_message', 'タスクを未完了に戻しました。');
+        $flashMessage = 'タスクを未完了に戻しました。';
+        return redirect()->route('tasks.index')->with(compact('flashMessage'));
     }
 
-
     // 未完了タスク取得
-    private function getNotDoneTasks($filter, $user_id = "")
+    private function getNotDoneTasks($selectedFilter, $user_id = '')
     {
-        return $this->getTasks('notDone', $filter,  $user_id);
+        return $this->getTasks('notDone', $selectedFilter, $user_id);
     }
 
     // 完了済みタスク取得
-    private function getDoneTasks($filter, $user_id = "")
+    private function getDoneTasks($selectedFilter, $user_id = '')
     {
-        return $this->getTasks('done', $filter, $user_id);
+        return $this->getTasks('done', $selectedFilter, $user_id);
     }
 
     // タスク取得
-    private function getTasks($status, $filter, $user_id = "")
+    private function getTasks($status, $selectedFilter, $user_id = '')
     {
         // 完了または未完了タスク取得
         $tasks = Task::allTasks()->$status(); // done または notDone
 
         // プルダウン絞り込み
-        $filters = Config::get('const.filter');
-        if (isset($filters[$filter]['method']) && $filters[$filter]['method']) {
-            $method = $filters[$filter]['method'];
+        $filters = config('const.filter');
+        if (isset($filters[$selectedFilter]['method']) && $filters[$selectedFilter]['method']) {
+            $method = $filters[$selectedFilter]['method'];
             $tasks->$method();
         }
 
@@ -211,5 +154,4 @@ class TasksController extends Controller
 
         return $tasks->paginate(config('const.paginate.display_count'));
     }
-
 }

@@ -4,20 +4,34 @@ namespace App\Models;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Task extends Model
 {
     protected $fillable = ['name', 'user_id', 'deadline_at'];
     protected function casts(): array{
         return [
-            'deadline_at' => 'date:M/D(ddd)'
+            'deadline_at' => 'date'
         ];
     }
 
-    // deadline_atのアクセサを定義
-    public function getDeadlineAtFormattedAttribute()
+
+    // 期限日（表示用）
+    protected function deadlineAtFormatted(): Attribute
     {
-        return $this->deadline_at->isoFormat('M/D(ddd)');
+        return Attribute::make(
+            get: fn (mixed $value, array $attributes)=> Carbon::parse($attributes['deadline_at'])->isoFormat('M/D(ddd)'),
+        );
+    }
+
+    // // 期限切れフラグ
+    protected function isOverdue(): Attribute
+    {
+        return Attribute::make(
+            get: function (mixed $value, array $attributes){
+                return $attributes['deadline_at'] ? Carbon::parse($attributes['deadline_at'])->isBefore(now()) : false;
+            }
+        );
     }
 
 

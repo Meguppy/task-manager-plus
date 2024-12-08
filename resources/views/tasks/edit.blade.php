@@ -5,7 +5,7 @@
 
 <div class="container col-6">
     <h1 class="my-4 fs-4 fw-normal">タスク編集</h1>
-    <form action="{{ route('tasks.update', ['id' => $task->id]) }}" method="post">
+    <form action="{{ route('tasks.update', ['task' => $task->id]) }}" method="post">
         @csrf
         @method('PUT')
         <div class="row bg-light p-5">
