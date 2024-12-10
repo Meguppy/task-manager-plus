@@ -44,6 +44,22 @@ class TasksController extends Controller
         return view('tasks.index', compact('tasks', 'doneTasks', 'selectedFilter'));
     }
 
+
+    // オールタスク画面表示 API
+    public function indexApi(Request $request)
+    {
+        // 絞り込みプルダウンの値取得
+        $selectedFilter = $request->input('selectedFilter', 'all');
+
+        // 未完了タスク取得
+        $tasks = $this->getNotDoneTasks($selectedFilter);
+
+        // 完了済みタスク取得
+        $doneTasks = $this->getDoneTasks('all');
+
+        return response()->json(compact('tasks', 'doneTasks', 'selectedFilter'));
+    }
+
     // タスク登録画面表示
     public function create()
     {

@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Pagination\Paginator;
+use Laravel\Sanctum\Sanctum;
 use Illuminate\Support\Carbon;
+use Illuminate\Pagination\Paginator;
+use Illuminate\Support\ServiceProvider;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -23,8 +25,8 @@ class AppServiceProvider extends ServiceProvider
     {
         //
         Paginator::useBootstrapFive();
-        // Carbonのロケールを日本語に設定
         Carbon::setLocale(config('app.locale'));
-        setlocale(LC_ALL,'ja_JP.UTF-8');
+        setlocale(LC_ALL, 'ja_JP.UTF-8');
+        // Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
     }
 }

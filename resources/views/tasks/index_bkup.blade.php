@@ -1,24 +1,25 @@
 @extends('layouts.app')
 @section('content')
-<div class="container col-md-6">
+    <div class="container col-md-6">
+        {{-- @todo 後で消す --}}
 
-    @if (session('flashMessage'))
-        <div class="container col-8 text-danger">
-            {{ session('flashMessage') }}
-        </div>
-    @endif
+        @if (session('flashMessage'))
+            <div class="container col-8 text-danger">
+                {{ session('flashMessage') }}
+            </div>
+        @endif
 
-    @if (session('error'))
-        <div class="alert alert-danger" style="color:red">
-            {{ session('error') }}
-        </div>
-    @endif
+        @if (session('error'))
+            <div class="alert alert-danger" style="color:red">
+                {{ session('error') }}
+            </div>
+        @endif
 
-        <h1 class="my-3 fs-4 fw-normal">My Tasks</h1>
+        <h1 class="my-3 fs-4 fw-normal">All Tasks</h1>
         <hr>
 
         {{-- プルダウン検索 --}}
-        <form action="{{ route('tasks.my') }}" method="get" class="form-inline d-inline-flex w-100 mb-4">
+        <form action="{{ route('tasks.index') }}" method="get" class="form-inline d-inline-flex w-100 mb-4">
             <!-- 条件選択 -->
             <select name="selectedFilter" id="selectedFilter" class="form-select me-3" style="width: 200px;">
                 @foreach (config('const.filter') as $key => $value)
@@ -54,6 +55,12 @@
                                             @if ($task->deadline_at)
                                             {{ $task->deadline_at_formatted }}
                                             @endif
+                                        </p>
+                                    </div>
+                                    {{-- 担当者名 --}}
+                                    <div class="">
+                                        <p class="fs-7 text-body-tertiary">
+                                            {{ $task->user_name }}
                                         </p>
                                     </div>
                                 </div>
@@ -115,6 +122,12 @@
                                     @endif
                                 </p>
                             </div>
+                            {{-- 担当者名 --}}
+                            <div class="">
+                                <p class="fs-7 text-body-tertiary">
+                                    {{ $task->user_name }}
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </label>
@@ -166,4 +179,5 @@
             form.submit();
         }
     </script>
+
 @endsection('content')
