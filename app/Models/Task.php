@@ -14,7 +14,8 @@ class Task extends Model
             'deadline_at' => 'date'
         ];
     }
-    protected $appends = ['deadline_at_formatted', 'is_overdue'];
+    // @todo 戻す
+    // protected $appends = ['deadline_at_formatted', 'is_overdue'];
 
     // 期限日（表示用）
     protected function deadlineAtFormatted(): Attribute
@@ -84,5 +85,10 @@ class Task extends Model
     {
         return $query
             ->whereNull('user_id');
+    }
+
+
+    public function user(){
+        return $this->belongsTo(User::class);
     }
 }

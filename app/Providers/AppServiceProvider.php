@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Illuminate\Http\Resources\Json\JsonResource;
 use Laravel\Sanctum\Sanctum;
 use Illuminate\Support\Carbon;
 use Illuminate\Pagination\Paginator;
@@ -28,5 +29,6 @@ class AppServiceProvider extends ServiceProvider
         Carbon::setLocale(config('app.locale'));
         setlocale(LC_ALL, 'ja_JP.UTF-8');
         // Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
+        JsonResource::withoutWrapping();
     }
 }

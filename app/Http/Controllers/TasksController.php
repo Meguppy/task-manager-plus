@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\TaskResource;
 use Carbon\Carbon;
 use App\Models\Task;
 use App\Models\User;
@@ -41,11 +42,12 @@ class TasksController extends Controller
         // 完了済みタスク取得
         $doneTasks = $this->getDoneTasks('all');
 
-        return view('tasks.index', compact('tasks', 'doneTasks', 'selectedFilter'));
+        // return view('tasks.index', compact('tasks', 'doneTasks', 'selectedFilter'));
+        return view('tasks.index');
     }
 
 
-    // オールタスク画面表示 API
+    // オールタスク画面表示
     public function indexApi(Request $request)
     {
         // 絞り込みプルダウンの値取得
@@ -58,6 +60,25 @@ class TasksController extends Controller
         $doneTasks = $this->getDoneTasks('all');
 
         return response()->json(compact('tasks', 'doneTasks', 'selectedFilter'));
+    }
+
+    public function indexDoneApi(Request $request)
+    {
+        // 完了済みタスク取得
+        $doneTasks = $this->getDoneTasks('all');
+
+        return  TaskResource::collection($doneTasks);
+    }
+
+    public function indexUnDoneApi(Request $request)
+    {
+        // 絞り込みプルダウンの値取得
+        $selectedFilter = $request->input('selectedFilter', 'all');
+
+        // 未完了タスク取得
+        $tasks = $this->getNotDoneTasks($selectedFilter);
+
+        return  TaskResource::collection($tasks);
     }
 
     // タスク登録画面表示
@@ -110,6 +131,12 @@ class TasksController extends Controller
         $flashMessage = 'タスクを削除しました。';
         return redirect()->route('tasks.index')->with(compact('flashMessage'));
     }
+    public function destroyApi(Task $task)
+    {
+        Task::destroy($task->id);
+
+        return response()->json();
+    }
 
     // タスク完了処理
     public function done(Request $request)
@@ -128,6 +155,13 @@ class TasksController extends Controller
         $flashMessage = 'タスクを完了しました。';
         return redirect()->route('tasks.index')->with(compact('flashMessage'));
     }
+    public function doneApi(Task $task)
+    {
+        $task->done_at = Carbon::now();
+        $task->save();
+
+        return response()->json();
+    }
 
     // タスク未完了処理
     public function unDone(Task $task)
@@ -136,6 +170,13 @@ class TasksController extends Controller
 
         $flashMessage = 'タスクを未完了に戻しました。';
         return redirect()->route('tasks.index')->with(compact('flashMessage'));
+    }
+    public function unDoneApi(Task $task)
+    {
+        $task->done_at = null;
+        $task->save();
+
+        return response()->json();
     }
 
     // 未完了タスク取得
@@ -168,6 +209,9 @@ class TasksController extends Controller
             $q->my($user_id);
         });
 
-        return $tasks->paginate(config('const.paginate.display_count'));
+        // @todo 戻す
+        return $tasks->get();
+        // return $tasks->paginate(config('const.paginate.display_count'));
+
     }
 }
